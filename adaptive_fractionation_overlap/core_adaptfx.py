@@ -149,7 +149,7 @@ def adaptive_fractionation_core(fraction: int, volumes: np.ndarray, accumulated_
                     actual_policy = best_action
                     policies_overlap[indexer] = actual_policy
                     values_actual_frac[indexer] = actual_value
-                best_action = goal - poss_accum_doses
+                best_action = goal - accumulated_dose
                 if accumulated_dose > goal:
                     best_action = 0
                     actual_value = -1000000000000
