@@ -2,8 +2,8 @@ import streamlit as st
 import adaptive_fractionation_overlap as af
 import numpy as np
 st.set_page_config(layout="wide")
-st.title('Adaptive Fractionation for prostate cancer interface')
-st.markdown('## info \n This web app is supposed to be used as user interface to compute the optimal dose to be delivered in prostate adaptive fractionation if you have any questions please contact [yoel.perezhaas@usz.ch](mailto:yoel.perezhaas@usz.ch)')
+st.title('Overlap Adaptive Fractionation Interface')
+st.markdown('## info \n This web app is supposed to be used as user interface to compute the optimal dose to be delivered in PTV-OAR-overlap adaptive fractionation if you have any questions please contact [yoel.perezhaas@usz.ch](mailto:yoel.perezhaas@usz.ch)')
 
 @st.cache_data
 def convert_df(df):
@@ -29,9 +29,9 @@ with left:
     overlaps_str = st.text_input('observed overlap volumes in cc separated by spaces', help = 'insert ALL observed overlaps for the patient. for a full plan at least (number of fractions - 1) volumes are required')
     actual_fraction = st.text_input('number of actual fraction', disabled = (function =='full plan calculation'), help = 'the actual fraction number is only needed for the actual fraction calculation')
 with right:
-    minimum_dose = st.text_input('minimum dose', '7.5', help = 'insert the minimum dose in Gy')
-    maximum_dose = st.text_input('maximum dose', '9.5', help = 'insert the maximum dose in Gy')
-    mean_dose = st.text_input('mean dose to be delivered over all fractions', '8', help = 'insert mean dose in Gy')
+    minimum_dose = st.text_input('minimum dose', '6', help = 'insert the minimum dose in Gy')
+    maximum_dose = st.text_input('maximum dose', '10', help = 'insert the maximum dose in Gy')
+    mean_dose = st.text_input('mean dose to be delivered over all fractions', '7', help = 'insert mean dose in Gy')
     dose_steps = st.text_input('difference between the deliverable doses', '0.25', help= 'e.g. 0.5 leads to the dose steps of 7.5,8.0,8.5,... any other dose is not allowed')
     accumulated_dose = st.text_input('accumulated physical dose in previous fractions', disabled = (function =='full plan calculation'), help = 'the accumulated dose is only needed in the actual fraction calculation set to 0 if actual fraction is 1')
     minimum_benefit = st.text_input('minimum benefit to be achieved to start adaptive fractionation', '0', help = 'once the minimum benefit is expected to be reached, AF is started')
