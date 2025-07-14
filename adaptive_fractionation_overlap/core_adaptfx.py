@@ -158,7 +158,7 @@ def adaptive_fractionation_core(fraction: int, volumes: np.ndarray, accumulated_
     penalty_added = penalty_calc_single(physical_dose, min_dose, mean_dose, actual_volume, steepness_penalty)
     benefit_added = benefit_calc_single(physical_dose, mean_dose, actual_volume, steepness_benefit)
     final_penalty = np.max(actual_value) - penalty_added + benefit_added
-    return [policies, policies_overlap, volume_space, physical_dose, penalty_added, values, dose_space, probabilities, final_penalty]
+    return [policies, policies_overlap, volume_space, physical_dose, penalty_added, values, dose_space, probabilities, final_penalty,actual_value]
     
    
 def adaptfx_full(volumes: list, number_of_fractions: int = 5, steepness_penalty: float = -0.5, steepness_benefit: float = -0.1, min_dose: float = 6, max_dose: float = 10, mean_dose: float = 8, dose_steps: float = 0.25, alpha: float = 1.072846744379587, beta:float = 0.7788684130749829, minimum_benefit: float = 0):
