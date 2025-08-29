@@ -170,21 +170,20 @@ def adaptfx_full(volumes: list, number_of_fractions: int = 5, steepness: float =
     """
     intercept = -0.660504
     slope = -0.65
-    steepness = np.abs(intercept + slope * volumes[-1])
     physical_doses = np.zeros(number_of_fractions)
     accumulated_doses = np.zeros(number_of_fractions)
     for index, frac in enumerate(range(1,number_of_fractions +1)):
         if frac != number_of_fractions:
-            [policies, policies_overlap, volume_space, physical_dose, penalty_added, values, dose_space, probabilities, final_penalty]  = adaptive_fractionation_core(fraction = frac, volumes = volumes[:-number_of_fractions+frac], accumulated_dose = accumulated_doses[index], steepness = steepness, number_of_fractions= number_of_fractions, min_dose = min_dose, max_dose = max_dose, mean_dose = mean_dose, dose_steps = dose_steps, alpha = alpha, beta = beta, minimum_benefit = minimum_benefit)
+            [policies, policies_overlap, volume_space, physical_dose, penalty_added, values, dose_space, probabilities, final_penalty]  = adaptive_fractionation_core(fraction = frac, volumes = volumes[:-number_of_fractions+frac], accumulated_dose = accumulated_doses[index], number_of_fractions= number_of_fractions, min_dose = min_dose, max_dose = max_dose, mean_dose = mean_dose, dose_steps = dose_steps, alpha = alpha, beta = beta, minimum_benefit = minimum_benefit)
             accumulated_doses[index+1] = accumulated_doses[index] + physical_dose
         else:
-            [policies, policies_overlap, volume_space, physical_dose, penalty_added, values, dose_space, probabilities, final_penalty]  = adaptive_fractionation_core(fraction = frac, volumes = volumes,accumulated_dose = accumulated_doses[index], steepness = steepness, number_of_fractions= number_of_fractions, min_dose = min_dose, max_dose = max_dose, mean_dose = mean_dose, dose_steps = dose_steps, alpha = alpha, beta = beta, minimum_benefit = minimum_benefit)
+            [policies, policies_overlap, volume_space, physical_dose, penalty_added, values, dose_space, probabilities, final_penalty]  = adaptive_fractionation_core(fraction = frac, volumes = volumes,accumulated_dose = accumulated_doses[index], number_of_fractions= number_of_fractions, min_dose = min_dose, max_dose = max_dose, mean_dose = mean_dose, dose_steps = dose_steps, alpha = alpha, beta = beta, minimum_benefit = minimum_benefit)
         physical_doses[index] = physical_dose
     total_penalty = 0
     for index, dose in enumerate(physical_doses):
         print(index, dose)
-        print('penalty',penalty_calc_single(dose, min_dose, volumes[-number_of_fractions+index], steepness))
-        total_penalty -= penalty_calc_single(dose, min_dose, volumes[-number_of_fractions+index], steepness)
+        print('penalty',penalty_calc_single(dose, min_dose, volumes[-number_of_fractions+index], steepness = np.abs(intercept + slope * volumes[index])))
+        total_penalty -= penalty_calc_single(dose, min_dose, volumes[-number_of_fractions+index], steepness = np.abs(intercept + slope * volumes[index]))
     return physical_doses, accumulated_doses, total_penalty
 
 
