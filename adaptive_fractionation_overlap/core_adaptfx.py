@@ -19,7 +19,7 @@ from .helper_functions import (
 )
 
 
-def adaptive_fractionation_core(fraction: int, volumes: np.ndarray, accumulated_dose: float, steepness: float, number_of_fractions: int = 5, min_dose: float = 6, max_dose: float = 10, mean_dose:float  = 8, dose_steps: float = 0.25, alpha: float = 1.072846744379587, beta:float = 0.7788684130749829, minimum_benefit = 0):
+def adaptive_fractionation_core(fraction: int, volumes: np.ndarray, accumulated_dose: float, number_of_fractions: int = 5, min_dose: float = 6, max_dose: float = 10, mean_dose:float  = 8, dose_steps: float = 0.25, alpha: float = 1.072846744379587, beta:float = 0.7788684130749829, minimum_benefit = 0):
     """The core function computes the optimal dose for a single fraction.
     The function optimizes the fractionation based on an objective function
     which aims to maximize the tumor coverage, i.e. minimize the dose when
@@ -42,7 +42,10 @@ def adaptive_fractionation_core(fraction: int, volumes: np.ndarray, accumulated_
         penalty_added (penalty added in the actual fraction if physical_dose is applied), values (values of all future fractions. index 0 is the last fraction),
         probabilits (probability of each overlap volume to occure), final_penalty (projected final penalty starting from the actual fraction)
     """
-    steepness = np.abs(steepness)
+    intercept = -0.660504
+    slope = -0.65
+    steepness = np.abs(intercept + slope * volumes[-1])
+
     goal = number_of_fractions * mean_dose #dose to be reached
     actual_volume = volumes[-1]
     if fraction == 1:
@@ -165,7 +168,9 @@ def adaptfx_full(volumes: list, number_of_fractions: int = 5, steepness: float =
         accumullated_doses (array with the accumulated dose in each fraction),
         total_penalty (final penalty after fractionation if all suggested doses are applied)
     """
-    steepness = np.abs(steepness)
+    intercept = -0.660504
+    slope = -0.65
+    steepness = np.abs(intercept + slope * volumes[-1])
     physical_doses = np.zeros(number_of_fractions)
     accumulated_doses = np.zeros(number_of_fractions)
     for index, frac in enumerate(range(1,number_of_fractions +1)):
@@ -209,7 +214,7 @@ def precompute_plan(fraction: int, volumes: np.ndarray, accumulated_dose: float,
     volumes_to_check = np.arange(0,distribution_max,0.1)
     predicted_policies = np.zeros(len(volumes_to_check))
     for index, volume in enumerate(volumes_to_check):
-        [policies, policies_overlap, volume_space, physical_dose, penalty_added, values, dose_space, probabilities, final_penalty] = adaptive_fractionation_core(fraction = fraction, volumes = np.append(volumes,volume), accumulated_dose = accumulated_dose, steepness_penalty = steepness_penalty, steepness_benefit = steepness_benefit, number_of_fractions = number_of_fractions, min_dose = min_dose, max_dose = max_dose, mean_dose = mean_dose, dose_steps = dose_steps, alpha = alpha, beta = beta, minimum_benefit = minimum_benefit)
+        [policies, policies_overlap, volume_space, physical_dose, penalty_added, values, dose_space, probabilities, final_penalty] = adaptive_fractionation_core(fraction = fraction, volumes = np.append(volumes,volume), accumulated_dose = accumulated_dose, number_of_fractions = number_of_fractions, min_dose = min_dose, max_dose = max_dose, mean_dose = mean_dose, dose_steps = dose_steps, alpha = alpha, beta = beta, minimum_benefit = minimum_benefit)
         predicted_policies[index] = physical_dose
     data = {'volume': volumes_to_check,
             'dose': predicted_policies}
