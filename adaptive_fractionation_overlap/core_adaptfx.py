@@ -182,8 +182,8 @@ def adaptfx_full(volumes: list, number_of_fractions: int = 5, steepness: float =
     total_penalty = 0
     for index, dose in enumerate(physical_doses):
         print(index, dose)
-        print('penalty',penalty_calc_single(dose, min_dose, volumes[-number_of_fractions+index], steepness = np.abs(intercept + slope * volumes[index])))
-        total_penalty -= penalty_calc_single(dose, min_dose, volumes[-number_of_fractions+index], steepness = np.abs(intercept + slope * volumes[index]))
+        print('penalty',penalty_calc_single(dose, min_dose, volumes[-number_of_fractions+index], steepness = np.abs(intercept + slope * volumes[-number_of_fractions+index])))
+        total_penalty -= penalty_calc_single(dose, min_dose, volumes[-number_of_fractions+index], steepness = np.abs(intercept + slope * volumes[-number_of_fractions+index]))
     return physical_doses, accumulated_doses, total_penalty
 
 
