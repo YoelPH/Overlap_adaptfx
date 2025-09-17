@@ -119,36 +119,36 @@ def probdist(X,state_space):
         prob[idx] = X.cdf(state + spacing/2) - X.cdf(state - spacing/2)
     return np.array(prob) #note: this will only add up to roughly 96% instead of 100%
 
-def penalty_calc_single(physical_dose, min_dose, actual_volume, steepness):
+def penalty_calc_single(physical_dose, min_dose, actual_volume, intercept, slope):
     """
     This function calculates the penalty for the given dose and volume by adding the triangle arising from the dose gradient
     if the dose delivered is larger than the uniform fractionated dose.
     """
-    steepness = np.abs(steepness)
+    steepness = np.abs(intercept + slope * actual_volume)
     penalty_added = (physical_dose - min_dose) * (actual_volume) + (physical_dose - min_dose)**2*steepness/2
     return penalty_added
 
 
-def penalty_calc_single_volume(delivered_doses, min_dose, actual_volume, steepness):
+def penalty_calc_single_volume(delivered_doses, min_dose, actual_volume, intercept, slope):
     """
     This function calculates the penalty for the given doses and single volume by adding the triangle arising from the dose gradient
     if the dose delivered is larger than the uniform fractionated dose.
     """
-    steepness = np.abs(steepness)
+    steepness = np.abs(intercept + slope * actual_volume)
     overlap_penalty_linear = (delivered_doses - min_dose) * actual_volume
     overlap_penalty_quadratic = (delivered_doses - min_dose)**2*steepness/2
     overlap_penalty = overlap_penalty_linear + overlap_penalty_quadratic
     return overlap_penalty
 
 
-def penalty_calc_matrix(delivered_doses, volume_space, min_dose, steepness):
+def penalty_calc_matrix(delivered_doses, volume_space, min_dose, intercept, slope):
     """
     This function calculates the penalty for the given dose and volume by adding the triangle arising from the dose gradient
     if the dose delivered is larger than the uniform fractionated dose.
     """
-    steepness = np.abs(steepness)
+    steepness = np.abs(intercept + slope * volume_space)
     overlap_penalty_linear = (np.outer(volume_space, (delivered_doses - min_dose)))
-    overlap_penalty_quadratic = (delivered_doses - min_dose)**2*steepness/2
+    overlap_penalty_quadratic = np.outer(steepness,(delivered_doses - min_dose)**2)/2
     overlap_penalty = overlap_penalty_linear + overlap_penalty_quadratic
     return overlap_penalty
 
