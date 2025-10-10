@@ -40,8 +40,8 @@ def hyperparam_fit(data):
     list
         alpha and beta hyperparameter.
     """
-    vars = data.var(axis=1)
-    alpha, loc, beta = gamma.fit(vars, floc=0)
+    standard_devs = data.std(axis=1)
+    alpha, loc, beta = gamma.fit(standard_devs, floc=0)
     return [alpha, beta]
 
 def std_calc(measured_data, alpha, beta):
