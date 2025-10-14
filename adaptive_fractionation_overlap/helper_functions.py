@@ -119,6 +119,29 @@ def probdist(X,state_space):
         prob[idx] = X.cdf(state + spacing/2) - X.cdf(state - spacing/2)
     return np.array(prob) #note: this will only add up to roughly 96% instead of 100%
 
+def penalty_calc_single(physical_dose, min_dose, mean_dose, actual_volume):
+    """
+    This function calculates the penalty for the given dose and volume.
+    """
+    penalty_added = actual_volume * (physical_dose - min_dose)
+    return penalty_added
+
+def penalty_calc_single_volume(delivered_doses, min_dose, mean_dose, actual_volume):
+    """
+    This function calculates the penalty for the given doses and single volume.
+    """
+    overlap_penalty = (delivered_doses - min_dose) * actual_volume
+    return overlap_penalty
+
+
+def penalty_calc_matrix(delivered_doses, volume_space, min_dose, mean_dose):
+    """
+    This function calculates the penalty for the given dose and volume.
+    """
+    overlap_penalty = (np.outer(volume_space, (delivered_doses - min_dose)))
+    return overlap_penalty
+
+
 def max_action(accumulated_dose, dose_space, goal):
     """
     Computes the maximal dose that can be delivered to the tumor in each fraction depending on the actual accumulated dose
@@ -182,9 +205,9 @@ def analytic_plotting(fraction: int, number_of_fractions: int, values: np.ndarra
     Returns:
         matplotlib.fig: returns a figure with all values plotted as subfigures
     """
-    values[values < -10000000000] = -20.222222222222
+    values[values < -10000000000] = 10000000000
     min_Value = np.min(values)
-    values[values == -20.222222222222] = 1.1*min_Value
+    values[values == 10000000000] = 1.1*min_Value
     colormap = plt.cm.get_cmap('jet')
     number_of_plots = number_of_fractions - fraction
     fig, axs = plt.subplots(1,number_of_plots, figsize = (number_of_plots*10,10))
