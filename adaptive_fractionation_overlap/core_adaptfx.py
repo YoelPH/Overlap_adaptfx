@@ -18,7 +18,7 @@ from .helper_functions import (
     penalty_calc_single_volume,
 )
 
-INTERCEPT = -0.66
+INTERCEPT = -0
 SLOPE = -0.65
 
 
