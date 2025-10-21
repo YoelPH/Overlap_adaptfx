@@ -24,7 +24,6 @@ from .helper_functions import (
     max_action,
     penalty_calc_single,
     penalty_calc_matrix,
-    penalty_calc_single_volume,
 )
 
 
@@ -84,7 +83,7 @@ def adaptive_fractionation_core(fraction: int, volumes: np.ndarray, accumulated_
         for state, fraction_state in enumerate(np.arange(number_of_fractions, fraction-1, -1)):
             if (state == number_of_fractions - 1):  # first fraction with no prior dose delivered so we dont loop through dose_space
                 overlap_penalty = penalty_calc_matrix(delivered_doses, volume_space, min_dose) #This means only values over min_dose get a penalty. Values below min_dose do not get a reward
-                actual_penalty = penalty_calc_single_volume(delivered_doses, min_dose, actual_volume)
+                actual_penalty = penalty_calc_single(delivered_doses, min_dose, actual_volume)
                 future_values_func = interp1d(dose_space, (values[state - 1] * probabilities).sum(axis=1))
                 future_values = future_values_func(delivered_doses)  # for each action and sparing factor calculate the penalty of the action and add the future value we will only have as many future values as we have actions
                 values_actual_frac = -overlap_penalty + future_values
@@ -95,7 +94,7 @@ def adaptive_fractionation_core(fraction: int, volumes: np.ndarray, accumulated_
             elif (fraction_state == fraction and fraction != number_of_fractions):  # actual fraction but not first fraction
                 delivered_doses_clipped = delivered_doses[0 : max_action(accumulated_dose, delivered_doses, goal)+1]
                 overlap_penalty = penalty_calc_matrix(delivered_doses_clipped, volume_space, min_dose) #This means only values over min_dose get a penalty.
-                actual_penalty = penalty_calc_single_volume(delivered_doses_clipped, min_dose, actual_volume)
+                actual_penalty = penalty_calc_single(delivered_doses_clipped, min_dose, actual_volume)
                 future_doses = accumulated_dose + delivered_doses_clipped
                 future_doses[future_doses > goal] = bound
                 penalties = np.zeros(future_doses.shape)
@@ -177,10 +176,10 @@ def adaptfx_full(volumes: list, number_of_fractions: int = DEFAULT_NUMBER_OF_FRA
     accumulated_doses = np.zeros(number_of_fractions)
     for index, frac in enumerate(range(1,number_of_fractions +1)):
         if frac != number_of_fractions:
-            [policies, policies_overlap, volume_space, physical_dose, penalty_added, values, dose_space, probabilities, final_penalty]  = adaptive_fractionation_core(fraction = frac, volumes = volumes[:-number_of_fractions+frac], accumulated_dose = accumulated_doses[index], number_of_fractions= number_of_fractions, min_dose = min_dose, max_dose = max_dose, mean_dose = mean_dose, dose_steps = dose_steps, alpha = alpha, beta = beta)
+            [policies, policies_overlap, volume_space, physical_dose, penalty_added, values, dose_space, probabilities, final_penalty]  = adaptive_fractionation_core(fraction = frac, volumes = np.array(volumes[:-number_of_fractions+frac]), accumulated_dose = accumulated_doses[index], number_of_fractions= number_of_fractions, min_dose = min_dose, max_dose = max_dose, mean_dose = mean_dose, dose_steps = dose_steps, alpha = alpha, beta = beta)
             accumulated_doses[index+1] = accumulated_doses[index] + physical_dose
         else:
-            [policies, policies_overlap, volume_space, physical_dose, penalty_added, values, dose_space, probabilities, final_penalty]  = adaptive_fractionation_core(fraction = frac, volumes = volumes,accumulated_dose = accumulated_doses[index], number_of_fractions= number_of_fractions, min_dose = min_dose, max_dose = max_dose, mean_dose = mean_dose, dose_steps = dose_steps, alpha = alpha, beta = beta)
+            [policies, policies_overlap, volume_space, physical_dose, penalty_added, values, dose_space, probabilities, final_penalty]  = adaptive_fractionation_core(fraction = frac, volumes = np.array(volumes),accumulated_dose = accumulated_doses[index], number_of_fractions= number_of_fractions, min_dose = min_dose, max_dose = max_dose, mean_dose = mean_dose, dose_steps = dose_steps, alpha = alpha, beta = beta)
         physical_doses[index] = physical_dose
     total_penalty = 0
     for index, dose in enumerate(physical_doses):

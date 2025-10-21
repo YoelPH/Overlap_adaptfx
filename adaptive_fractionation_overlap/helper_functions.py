@@ -143,39 +143,21 @@ def penalty_calc_single(physical_dose, min_dose, actual_volume, intercept=INTERC
     penalty_added : float or array
         The calculated penalty
     """
+    # Handle both scalar and array inputs
+    physical_dose = np.asarray(physical_dose)
+    min_dose = np.asarray(min_dose)
+    
+    # Calculate penalty for all cases
     steepness = np.abs(intercept + slope * actual_volume)
     penalty_added = (physical_dose - min_dose) * (actual_volume) + (physical_dose - min_dose)**2*steepness/2
-    return penalty_added
-
-
-def penalty_calc_single_volume(delivered_doses, min_dose, actual_volume, intercept=INTERCEPT, slope=SLOPE):
-    """
-    This function calculates the penalty for the given doses and single volume by adding the triangle arising from the dose gradient
-    if the dose delivered is larger than the uniform fractionated dose.
     
-    Parameters
-    ----------
-    delivered_doses : array
-        Array of delivered doses
-    min_dose : float
-        The minimum dose threshold
-    actual_volume : float
-        The actual overlap volume
-    intercept : float, optional
-        Penalty function intercept (default from constants)
-    slope : float, optional
-        Penalty function slope (default from constants)
-        
-    Returns
-    -------
-    overlap_penalty : array
-        The calculated penalties for each dose
-    """
-    steepness = np.abs(intercept + slope * actual_volume)
-    overlap_penalty_linear = (delivered_doses - min_dose) * actual_volume
-    overlap_penalty_quadratic = (delivered_doses - min_dose)**2*steepness/2
-    overlap_penalty = overlap_penalty_linear + overlap_penalty_quadratic
-    return overlap_penalty
+    # Set penalty to 0 where physical_dose < min_dose
+    penalty_added = np.where(physical_dose < min_dose, 0, penalty_added)
+    
+    # Return scalar if input was scalar, otherwise return array
+    if np.isscalar(penalty_added) or penalty_added.shape == ():
+        return float(penalty_added)
+    return penalty_added
 
 
 def penalty_calc_matrix(delivered_doses, volume_space, min_dose, intercept=INTERCEPT, slope=SLOPE):
