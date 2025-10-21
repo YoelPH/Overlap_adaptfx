@@ -26,9 +26,8 @@ pip install -e .
 
 ## Quick Start
 
---> Check the `evaluation/Evaluation.ipynb` notebook for a comprehensive example of using the package with clinical data.
+Check the `evaluation/Evaluation.ipynb` notebook for a comprehensive example of using the package with clinical data.
 
-```python
 ## Algorithm Details
 
 The adaptive fractionation algorithm:
