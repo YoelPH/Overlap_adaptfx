@@ -1,4 +1,12 @@
 __pycache__/
 adaptive_fractionation_overlap.egg-info/
 build/
+dist/
+*.egg-info/
+.pytest_cache/
+.coverage
+htmlcov/
+.tox/
+.venv/
+.env
 

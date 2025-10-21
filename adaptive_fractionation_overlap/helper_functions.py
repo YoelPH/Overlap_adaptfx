@@ -6,6 +6,7 @@ In this file are all helper functions that are needed for the adaptive fractiona
 import numpy as np
 from scipy.stats import norm, gamma
 import matplotlib.pyplot as plt
+from .constants import SLOPE, INTERCEPT
 
 
 
@@ -119,86 +120,75 @@ def probdist(X,state_space):
         prob[idx] = X.cdf(state + spacing/2) - X.cdf(state - spacing/2)
     return np.array(prob) #note: this will only add up to roughly 96% instead of 100%
 
-def penalty_calc_single(physical_dose, min_dose, mean_dose, actual_volume, steepness):
+def penalty_calc_single(physical_dose, min_dose, actual_volume, intercept=INTERCEPT, slope=SLOPE):
     """
     This function calculates the penalty for the given dose and volume by adding the triangle arising from the dose gradient
     if the dose delivered is larger than the uniform fractionated dose.
+    
+    Parameters
+    ----------
+    physical_dose : float or array
+        The physical dose delivered
+    min_dose : float
+        The minimum dose threshold
+    actual_volume : float or array
+        The actual overlap volume
+    intercept : float, optional
+        Penalty function intercept (default from constants)
+    slope : float, optional
+        Penalty function slope (default from constants)
+        
+    Returns
+    -------
+    penalty_added : float or array
+        The calculated penalty
     """
-    steepness = np.abs(steepness)
-    if physical_dose > mean_dose:
-        penalty_added = (physical_dose - min_dose) * (actual_volume) + (physical_dose - mean_dose)**2*steepness/2
-    else:
-        penalty_added = actual_volume * (physical_dose - min_dose)
+    # Handle both scalar and array inputs
+    physical_dose = np.asarray(physical_dose)
+    min_dose = np.asarray(min_dose)
+    
+    # Calculate penalty for all cases
+    steepness = np.abs(intercept + slope * actual_volume)
+    penalty_added = (physical_dose - min_dose) * (actual_volume) + (physical_dose - min_dose)**2*steepness/2
+    
+    # Set penalty to 0 where physical_dose < min_dose
+    penalty_added = np.where(physical_dose < min_dose, 0, penalty_added)
+    
+    # Return scalar if input was scalar, otherwise return array
+    if np.isscalar(penalty_added) or penalty_added.shape == ():
+        return float(penalty_added)
     return penalty_added
 
-def benefit_calc_single(physical_dose, mean_dose, actual_volume, steepness):
-    """
-    This function calculates the benefit for the given dose and volume by adding the triangle arising from the dose gradient
-    if the dose delivered is smaller than the uniform fractionated dose.
-    """
-    steepness = np.abs(steepness)
-    if physical_dose < mean_dose:
-        # benefit_added = (mean_dose - physical_dose) * (actual_volume + (mean_dose - physical_dose)*steepness/2)
-        benefit_added = (mean_dose - physical_dose) * ((mean_dose - physical_dose)*steepness/2)
-    else:
-        benefit_added = 0
-    return benefit_added    
 
-
-def penalty_calc_single_volume(delivered_doses, min_dose, mean_dose, actual_volume, steepness):
-    """
-    This function calculates the penalty for the given doses and single volume by adding the triangle arising from the dose gradient
-    if the dose delivered is larger than the uniform fractionated dose.
-    """
-    steepness = np.abs(steepness)
-    overlap_penalty_linear = (delivered_doses - min_dose) * actual_volume
-    overlap_penalty_quadratic = (delivered_doses - mean_dose)**2*steepness/2
-    overlap_penalty_quadratic[delivered_doses <= mean_dose] = 0
-    overlap_penalty = overlap_penalty_linear + overlap_penalty_quadratic
-    return overlap_penalty
-
-
-def benefit_calc_single_volume(delivered_doses, mean_dose, actual_volume, steepness):
-    """
-    This function calculates the benefit for the given doses and single volume by adding the triangle arising from the dose gradient
-    if the dose delivered is smaller than the uniform fractionated dose.
-    """
-    steepness = np.abs(steepness)
-    # overlap_benefit_linear = (mean_dose - delivered_doses) * actual_volume
-    overlap_benefit_quadratic = (mean_dose - delivered_doses)**2*steepness/2
-    overlap_benefit_quadratic[delivered_doses >= mean_dose] = 0
-    # overlap_benefit_linear[delivered_doses >= mean_dose] = 0
-    # overlap_benefit = overlap_benefit_linear + overlap_benefit_quadratic
-    overlap_benefit = overlap_benefit_quadratic
-    return overlap_benefit
-
-
-def penalty_calc_matrix(delivered_doses, volume_space, min_dose, mean_dose, steepness):
+def penalty_calc_matrix(delivered_doses, volume_space, min_dose, intercept=INTERCEPT, slope=SLOPE):
     """
     This function calculates the penalty for the given dose and volume by adding the triangle arising from the dose gradient
     if the dose delivered is larger than the uniform fractionated dose.
+    
+    Parameters
+    ----------
+    delivered_doses : array
+        Array of delivered doses
+    volume_space : array
+        Array of overlap volumes
+    min_dose : float
+        The minimum dose threshold
+    intercept : float, optional
+        Penalty function intercept (default from constants)
+    slope : float, optional
+        Penalty function slope (default from constants)
+        
+    Returns
+    -------
+    overlap_penalty : array
+        The calculated penalty matrix for all dose-volume combinations
     """
-    steepness = np.abs(steepness)
+    steepness = np.abs(intercept + slope * volume_space)
     overlap_penalty_linear = (np.outer(volume_space, (delivered_doses - min_dose)))
-    overlap_penalty_quadratic = (delivered_doses - mean_dose)**2*steepness/2
-    overlap_penalty_quadratic[delivered_doses <= mean_dose] = 0
+    overlap_penalty_quadratic = np.outer(steepness,(delivered_doses - min_dose)**2)/2
     overlap_penalty = overlap_penalty_linear + overlap_penalty_quadratic
     return overlap_penalty
 
-
-def benefit_calc_matrix(delivered_doses, volume_space, mean_dose, steepness):
-    """
-    This function calculates the benefit for the given dose and volume by adding the triangle arising from the dose gradient
-    if the dose delivered is smaller than the uniform fractionated dose.
-    """
-    steepness = np.abs(steepness)
-    # overlap_benefit_linear = (np.outer(volume_space, (mean_dose - delivered_doses)))
-    overlap_benefit_quadratic = (mean_dose - delivered_doses)**2*steepness/2
-    overlap_benefit_quadratic[delivered_doses >= mean_dose] = 0
-    # overlap_benefit_linear[:,delivered_doses >= mean_dose] = 0
-    # overlap_benefit = overlap_benefit_linear + overlap_benefit_quadratic
-    overlap_benefit = overlap_benefit_quadratic
-    return overlap_benefit
 
 def max_action(accumulated_dose, dose_space, goal):
     """
