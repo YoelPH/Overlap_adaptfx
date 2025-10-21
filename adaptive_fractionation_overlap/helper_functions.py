@@ -6,6 +6,7 @@ In this file are all helper functions that are needed for the adaptive fractiona
 import numpy as np
 from scipy.stats import norm, gamma
 import matplotlib.pyplot as plt
+from .constants import SLOPE, INTERCEPT
 
 
 
@@ -119,20 +120,56 @@ def probdist(X,state_space):
         prob[idx] = X.cdf(state + spacing/2) - X.cdf(state - spacing/2)
     return np.array(prob) #note: this will only add up to roughly 96% instead of 100%
 
-def penalty_calc_single(physical_dose, min_dose, actual_volume, intercept, slope):
+def penalty_calc_single(physical_dose, min_dose, actual_volume, intercept=INTERCEPT, slope=SLOPE):
     """
     This function calculates the penalty for the given dose and volume by adding the triangle arising from the dose gradient
     if the dose delivered is larger than the uniform fractionated dose.
+    
+    Parameters
+    ----------
+    physical_dose : float or array
+        The physical dose delivered
+    min_dose : float
+        The minimum dose threshold
+    actual_volume : float or array
+        The actual overlap volume
+    intercept : float, optional
+        Penalty function intercept (default from constants)
+    slope : float, optional
+        Penalty function slope (default from constants)
+        
+    Returns
+    -------
+    penalty_added : float or array
+        The calculated penalty
     """
     steepness = np.abs(intercept + slope * actual_volume)
     penalty_added = (physical_dose - min_dose) * (actual_volume) + (physical_dose - min_dose)**2*steepness/2
     return penalty_added
 
 
-def penalty_calc_single_volume(delivered_doses, min_dose, actual_volume, intercept, slope):
+def penalty_calc_single_volume(delivered_doses, min_dose, actual_volume, intercept=INTERCEPT, slope=SLOPE):
     """
     This function calculates the penalty for the given doses and single volume by adding the triangle arising from the dose gradient
     if the dose delivered is larger than the uniform fractionated dose.
+    
+    Parameters
+    ----------
+    delivered_doses : array
+        Array of delivered doses
+    min_dose : float
+        The minimum dose threshold
+    actual_volume : float
+        The actual overlap volume
+    intercept : float, optional
+        Penalty function intercept (default from constants)
+    slope : float, optional
+        Penalty function slope (default from constants)
+        
+    Returns
+    -------
+    overlap_penalty : array
+        The calculated penalties for each dose
     """
     steepness = np.abs(intercept + slope * actual_volume)
     overlap_penalty_linear = (delivered_doses - min_dose) * actual_volume
@@ -141,10 +178,28 @@ def penalty_calc_single_volume(delivered_doses, min_dose, actual_volume, interce
     return overlap_penalty
 
 
-def penalty_calc_matrix(delivered_doses, volume_space, min_dose, intercept, slope):
+def penalty_calc_matrix(delivered_doses, volume_space, min_dose, intercept=INTERCEPT, slope=SLOPE):
     """
     This function calculates the penalty for the given dose and volume by adding the triangle arising from the dose gradient
     if the dose delivered is larger than the uniform fractionated dose.
+    
+    Parameters
+    ----------
+    delivered_doses : array
+        Array of delivered doses
+    volume_space : array
+        Array of overlap volumes
+    min_dose : float
+        The minimum dose threshold
+    intercept : float, optional
+        Penalty function intercept (default from constants)
+    slope : float, optional
+        Penalty function slope (default from constants)
+        
+    Returns
+    -------
+    overlap_penalty : array
+        The calculated penalty matrix for all dose-volume combinations
     """
     steepness = np.abs(intercept + slope * volume_space)
     overlap_penalty_linear = (np.outer(volume_space, (delivered_doses - min_dose)))
