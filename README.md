@@ -57,7 +57,6 @@ tests/
 ├── test_helper_functions.py   # Mathematical function tests  
 ├── test_core_adaptfx.py       # Core algorithm tests
 ├── test_fixtures.py           # Test infrastructure validation
-└── test_error_handling.py     # Edge cases and error conditions
 
 evaluation/
 ├── Evaluation.ipynb           # Analysis notebooks
@@ -79,7 +78,6 @@ pytest tests/
 # Run specific test categories  
 pytest tests/test_core_adaptfx.py          # Core algorithms
 pytest tests/test_helper_functions.py      # Mathematical functions
-pytest tests/test_error_handling.py        # Edge cases
 
 # Run with coverage reporting
 pytest tests/ --cov=adaptive_fractionation_overlap --cov-report=html
