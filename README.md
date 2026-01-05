@@ -1,6 +1,6 @@
 # Adaptive Fractionation for PTV-OAR Overlap
 
-This repository contains the complete code for the adaptive fractionation methodology described in our paper. The approach optimizes radiation therapy dose delivery when there is overlap between the Planning Target Volume (PTV) and Organs at Risk (OAR)..
+This repository contains the complete code for the adaptive fractionation methodology described in our paper. The approach optimizes radiation therapy dose delivery when there is overlap between the Planning Target Volume (PTV) and Organs at Risk (OAR).
 
 ## 🔬 Overview
 
@@ -118,3 +118,4 @@ This project is licensed under the MIT License - see the LICENSE file for detail
 ---
 
 **Note**: This repository contains anonymized clinical data in compliance with patient privacy regulations. The adaptive fractionation methodology is designed for research purposes and requires clinical validation before clinical implementation.
+
