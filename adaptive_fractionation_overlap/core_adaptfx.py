@@ -27,6 +27,108 @@ from .helper_functions import (
 )
 
 
+def policy_calc(fixed_mean_volume: float, fixed_std: float, number_of_fractions: int = DEFAULT_NUMBER_OF_FRACTIONS, min_dose: float = DEFAULT_MIN_DOSE, max_dose: float = DEFAULT_MAX_DOSE, mean_dose:float = DEFAULT_MEAN_DOSE, dose_steps: float = DEFAULT_DOSE_STEPS, alpha: float = DEFAULT_ALPHA, beta:float = DEFAULT_BETA):
+    """The core function computes the optimal dose for a single fraction.
+    The function optimizes the fractionation based on an objective function
+    which aims to maximize the tumor coverage, i.e. minimize the dose when
+    PTV-OAR overlap is large and maximize the dose when the overlap is small.
+
+    Args:
+        fraction (int): number of actual fraction
+        volumes (np.ndarray): list of all volume overlaps observed so far
+        accumulated_dose (float): accumulated physical dose in tumor
+        number_of_fractions (int, optional): number of fractions given in total. Defaults to 5.
+        min_dose (float, optional): minimum phyical dose delivered in each fraction. Defaults to 7.5.
+        max_dose (float, optional): maximum dose delivered in each fraction. Defaults to 9.5.
+        mean_dose (int, optional): mean dose to be delivered over all fractions. Defaults to 8.
+        alpha (float, optional): alpha value of gamma distribution. Defaults to 1.8380125313579265.
+        beta (float, optional): beta value of gamma distribution. Defaults to 0.2654168553532238.
+
+    Returns:
+        numpy arrays and floats: returns 9 arrays: policies (all future policies), policies_overlap (policies of the actual overlaps),
+        volume_space (all considered overlap volumes), physical_dose (physical dose to be delivered in the actual fraction),
+        penalty_added (penalty added in the actual fraction if physical_dose is applied), values (values of all future fractions. index 0 is the last fraction),
+        probabilits (probability of each overlap volume to occure), final_penalty (projected final penalty starting from the actual fraction)
+    """
+    goal = number_of_fractions * mean_dose #dose to be reached
+
+    mean_volume = fixed_mean_volume
+    std_volume = fixed_std
+    distribution = norm(loc = mean_volume, scale = std_volume)
+    volume_space = get_state_space(distribution)
+    volumes = volume_space
+    accumulated_dose = 0
+    minimum_future = accumulated_dose + min_dose 
+    
+    volume_space = get_state_space(distribution)
+    probabilities = probdist(distribution,volume_space) #produce probabilities of the respective volumes
+    volume_space = volume_space.clip(0) #clip the volume space to 0cc as negative volumes do not exist
+    dose_space = np.arange(minimum_future,goal, dose_steps) #spans the dose space delivered to the tumor
+    dose_space = np.concatenate((dose_space, [goal, goal + 0.05])) # add an additional state that overdoses and needs to be prevented
+    bound = goal + 0.05
+    delivered_doses = np.arange(min_dose,max_dose + 0.01,dose_steps) #spans the action space of all deliverable doses
+    policies_overlap = np.zeros(len(volume_space))
+    values = np.zeros(((number_of_fractions - 1), len(dose_space), len(volume_space))) # 2d values list with first index being the accumulated dose and second being the overlap volume
+    policies = np.zeros(((number_of_fractions - 1), len(dose_space), len(volume_space)))
+    if goal - accumulated_dose < (number_of_fractions + 1 - 1) * min_dose:
+        actual_policy = min_dose
+        policies = np.ones(200)*actual_policy
+        policies_overlap = np.ones(200)*actual_policy
+        values = np.ones(((number_of_fractions - 1), len(dose_space), len(volume_space))) * -1000000000000 
+        actual_value = np.ones(1) * -1000000000000
+    elif goal - accumulated_dose > (number_of_fractions + 1 - 1) * max_dose:
+        actual_policy = max_dose
+        policies = np.ones(200)*actual_policy
+        policies_overlap = np.ones(200)*actual_policy
+        values = np.ones(((number_of_fractions - 1), len(dose_space), len(volume_space))) * -1000000000000 
+        actual_value = np.ones(1) * -1000000000000
+    else:
+        for state, fraction_state in enumerate(np.arange(number_of_fractions, 0, -1)):
+            if (state == number_of_fractions - 1):  # first fraction with no prior dose delivered so we dont loop through dose_space
+                overlap_penalty = penalty_calc_matrix(delivered_doses, volume_space, min_dose) #This means only values over min_dose get a penalty. Values below min_dose do not get a reward
+                future_values_func = interp1d(dose_space, (values[state - 1] * probabilities).sum(axis=1))
+                future_values = future_values_func(delivered_doses)  # for each action and sparing factor calculate the penalty of the action and add the future value we will only have as many future values as we have actions
+                values_actual_frac = -overlap_penalty + future_values
+                policies_overlap = delivered_doses[values_actual_frac.argmax(axis = 1)]
+            else: #any fraction that is not the actual one
+                future_value_prob = (values[state - 1] * probabilities).sum(axis=1)
+                future_values_func = interp1d(dose_space, future_value_prob)
+                for tumor_index, tumor_value in enumerate(dose_space):  # this and the next for loop allow us to loop through all states
+                    delivered_doses_clipped = delivered_doses[0 : max_action(tumor_value, delivered_doses, goal)+1]  # we only allow the actions that do not overshoot
+                    overlap_penalty = penalty_calc_matrix(delivered_doses_clipped, volume_space, min_dose) #This means only values over min_dose get a penalty.
+                    if state != 0:
+                        future_doses = tumor_value + delivered_doses_clipped
+                        future_doses[future_doses > goal] = bound #all overdosing doses are set to the penalty state
+                        future_values = future_values_func(future_doses)  # for each action and sparing factor calculate the penalty of the action and add the future value we will only have as many future values as we have actions (not sparing dependent)
+                        penalties = np.zeros(future_doses.shape)
+                        penalties[future_doses > goal] = -1000000000000
+                        vs = -overlap_penalty + future_values + penalties
+                        best_action = delivered_doses_clipped[vs.argmax(axis=1)]
+                        valer = vs.max(axis=1)
+
+                    else:  # last fraction when looping, only give the final penalty
+                        best_action = goal - tumor_value
+                        if best_action > max_dose:
+                            best_action = max_dose
+                        if best_action < min_dose:
+                            best_action = min_dose
+                        future_accumulated_dose = tumor_value + best_action
+                        last_penalty = penalty_calc_single(best_action, min_dose, volume_space)
+                        underdose_penalty = 0
+                        overdose_penalty = 0
+                        if np.round(future_accumulated_dose,2) < goal:
+                            underdose_penalty = -1000000000000 #in theory one can change this such that underdosing is penalted linearly
+                        if np.round(future_accumulated_dose,2) > goal:
+                            overdose_penalty = -1000000000000 
+                        valer = (- last_penalty + underdose_penalty * np.ones(volume_space.shape) + overdose_penalty * np.ones(volume_space.shape))  # gives the value of each action for all sparing factors. elements 0-len(sparingfactors) are the Values for
+                    policies[state][tumor_index] = best_action
+                    values[state][tumor_index] = valer
+                
+
+    return [policies, policies_overlap, volume_space, values, dose_space, probabilities]
+    
+
+
 def adaptive_fractionation_core(fraction: int, volumes: np.ndarray, accumulated_dose: float, number_of_fractions: int = DEFAULT_NUMBER_OF_FRACTIONS, min_dose: float = DEFAULT_MIN_DOSE, max_dose: float = DEFAULT_MAX_DOSE, mean_dose:float = DEFAULT_MEAN_DOSE, dose_steps: float = DEFAULT_DOSE_STEPS, alpha: float = DEFAULT_ALPHA, beta:float = DEFAULT_BETA):
     """The core function computes the optimal dose for a single fraction.
     The function optimizes the fractionation based on an objective function
