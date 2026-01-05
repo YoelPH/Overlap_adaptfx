@@ -81,7 +81,8 @@ def std_calc(measured_data, alpha, beta):
 
 def get_state_space(distribution):
     """
-    This function spans the state space for different volumes based on a probability distribution
+    The state space is defined as a linearly spaced grid between the 0.1% and 99.9% 
+    quantiles of the given distribution.
 
     Parameters
     ----------
@@ -90,8 +91,8 @@ def get_state_space(distribution):
 
     Returns
     -------
-    state_space: Array spanning from the 2% percentile to the 98% percentile with a normalized spacing to define 100 states
-        np.array
+    state_space: Array of 200 linearly spaced values between the 0.001 and 0.999 
+    quantiles of the distribution.
     """
     lower_bound = distribution.ppf(0.001)
     upper_bound = distribution.ppf(0.999)
