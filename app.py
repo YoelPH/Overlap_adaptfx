@@ -15,7 +15,7 @@ from adaptive_fractionation_overlap.constants import (
     DEFAULT_ALPHA,
     DEFAULT_BETA
 )
-from adaptive_fractionation_overlap.helper_functions import std_calc
+from adaptive_fractionation_overlap.helper_functions import std_calc, build_dose_decision_lines
 
 st.set_page_config(layout="wide")
 st.title('Overlap Adaptive Fractionation Interface')
@@ -50,7 +50,8 @@ def build_input_summary(
     alpha,
     beta,
     slope,
-    intercept
+    intercept,
+    volume_x_dose=None
 ):
     """Build a human-readable summary of all inputs used for a calculation."""
     lines = [
@@ -76,8 +77,12 @@ def build_input_summary(
         f"- Slope: {slope}",
         f"- Intercept: {intercept}",
     ]
+    if volume_x_dose is not None:
+        decision_lines = build_dose_decision_lines(volume_x_dose)
+        if decision_lines:
+            lines.extend(["", "Dose Decisions (from precompute plan)"])
+            lines.extend(decision_lines)
     return ("\n".join(lines)).encode("utf-8")
-
 
 @st.cache_data
 def build_precompute_zip(csv_bytes, input_summary_bytes):
@@ -143,7 +148,8 @@ if st.button('compute optimal dose', help = 'takes the given inputs from above t
             alpha=DEFAULT_ALPHA,
             beta=DEFAULT_BETA,
             slope=SLOPE,
-            intercept=INTERCEPT
+            intercept=INTERCEPT,
+            volume_x_dose=volume_x_dose
         )
         zip_bytes = build_precompute_zip(csv, input_summary)
         left2, right2 = st.columns(2)  

@@ -301,3 +301,43 @@ def min_dose_to_deliver(accumulated_dose: float, fractions_left: int, prescribed
     """
     min_dose_to_deliver_calculated = (prescribed_dose - accumulated_dose) - ((fractions_left - 1) *max_dose)
     return min_dose if min_dose_to_deliver_calculated < min_dose else min_dose_to_deliver_calculated
+
+
+def _format_number(value: float) -> str:
+    text = f"{value:.2f}"
+    return text.rstrip("0").rstrip(".")
+
+
+def build_dose_decision_lines(volume_x_dose) -> list:
+    """Build human-readable dose decision rules from a volume-dose table."""
+    if volume_x_dose is None or volume_x_dose.empty:
+        return []
+
+    volumes = volume_x_dose["volume"].to_numpy()
+    doses = volume_x_dose["dose"].to_numpy()
+    if len(volumes) == 0:
+        return []
+
+    lines = []
+    start_idx = 0
+    for i in range(1, len(doses)):
+        if doses[i] != doses[i - 1]:
+            start_vol = volumes[start_idx]
+            end_vol = volumes[i]
+            dose = doses[i - 1]
+            if start_idx == 0:
+                lines.append(
+                    f"- Volume < {_format_number(end_vol)} cc: deliver {_format_number(dose)} Gy"
+                )
+            else:
+                lines.append(
+                    f"- {_format_number(start_vol)} cc ≤ volume < {_format_number(end_vol)} cc: deliver {_format_number(dose)} Gy"
+                )
+            start_idx = i
+
+    start_vol = volumes[start_idx]
+    dose = doses[start_idx]
+    lines.append(
+        f"- Volume ≥ {_format_number(start_vol)} cc: deliver {_format_number(dose)} Gy"
+    )
+    return lines
