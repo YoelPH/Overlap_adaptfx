@@ -278,3 +278,26 @@ def analytic_plotting(fraction: int, number_of_fractions: int, values: np.ndarra
         cbar.set_label('state value', fontsize = 24) 
 
     return fig
+
+def min_dose_to_deliver(accumulated_dose: float, fractions_left: int, prescribed_dose: float, min_dose: float, max_dose: float = None) -> float:
+    """
+    This function calculates the minimal dose that needs to be delivered in the current fraction to still reach the goal
+
+    Parameters
+    ----------
+    accumulated_dose : float
+        accumulated dose so far
+    fractions_left : int
+        number of fractions left including the current one
+    min_dose : float
+        minimal dose that can be delivered in one fraction
+    max_dose : float, optional
+        maximal dose that can be delivered in one fraction, by default None
+
+    Returns
+    -------
+    float
+        minimal dose that needs to be delivered in the current fraction
+    """
+    min_dose_to_deliver_calculated = (prescribed_dose - accumulated_dose) - ((fractions_left - 1) *max_dose)
+    return min_dose if min_dose_to_deliver_calculated < min_dose else min_dose_to_deliver_calculated

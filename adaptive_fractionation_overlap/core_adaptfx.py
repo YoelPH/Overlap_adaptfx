@@ -24,6 +24,7 @@ from .helper_functions import (
     max_action,
     penalty_calc_single,
     penalty_calc_matrix,
+    min_dose_to_deliver,
 )
 
 
@@ -308,15 +309,22 @@ def precompute_plan(fraction: int, volumes: np.ndarray, accumulated_dose: float,
     Returns:
         pd.Dataframe, lists: Returns a dataframe with volumes and respective doses, and volumes and doses separated in two lists.
     """
+    #TODO: This is not very elegant yet. We could easily start from an empty list where we only consider 0cc and then extend it with the while loop only.
     std = std_calc(volumes, alpha, beta)
     distribution = norm(loc = volumes.mean(), scale = std)
     volume_space = get_state_space(distribution)
     distribution_max = 6.5 if volume_space.max() < 6.5 else volume_space.max()
     volumes_to_check = np.arange(0,distribution_max,0.1)
     predicted_policies = np.zeros(len(volumes_to_check))
+    min_dose_deliverable = min_dose_to_deliver(accumulated_dose=accumulated_dose,fractions_left = number_of_fractions - fraction + 1, prescribed_dose = mean_dose*number_of_fractions, min_dose = min_dose, max_dose = max_dose)
     for index, volume in enumerate(volumes_to_check):
         [policies, policies_overlap, volume_space, physical_dose, penalty_added, values, dose_space, probabilities, final_penalty] = adaptive_fractionation_core(fraction = fraction, volumes = np.append(volumes,volume), accumulated_dose = accumulated_dose, number_of_fractions = number_of_fractions, min_dose = min_dose, max_dose = max_dose, mean_dose = mean_dose, dose_steps = dose_steps, alpha = alpha, beta = beta)
         predicted_policies[index] = physical_dose
+    while predicted_policies[-1] > min_dose_deliverable:
+            volumes_to_check = np.append(volumes_to_check, volumes_to_check[-1] + 0.1)
+            [policies, policies_overlap, volume_space, physical_dose, penalty_added, values, dose_space, probabilities, final_penalty] = adaptive_fractionation_core(fraction = fraction, volumes = np.append(volumes,volumes_to_check[-1]), accumulated_dose = accumulated_dose, number_of_fractions = number_of_fractions, min_dose = min_dose, max_dose = max_dose, mean_dose = mean_dose, dose_steps = dose_steps, alpha = alpha, beta = beta)
+            predicted_policies = np.append(predicted_policies, physical_dose)
+        
     data = {'volume': volumes_to_check,
             'dose': predicted_policies}
     volume_x_dose = pd.DataFrame(data)

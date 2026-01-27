@@ -1,6 +1,9 @@
 import streamlit as st
 import adaptive_fractionation_overlap as af
 import numpy as np
+import io
+import zipfile
+from scipy.stats import norm
 from adaptive_fractionation_overlap.constants import (
     SLOPE, 
     INTERCEPT, 
@@ -12,6 +15,7 @@ from adaptive_fractionation_overlap.constants import (
     DEFAULT_ALPHA,
     DEFAULT_BETA
 )
+from adaptive_fractionation_overlap.helper_functions import std_calc
 
 st.set_page_config(layout="wide")
 st.title('Overlap Adaptive Fractionation Interface')
@@ -31,6 +35,58 @@ def convert_df(df):
 
 st.header('User Input')
 function = st.radio('Type of adaptive fractionation', ['actual fraction calculation','precompute plan','full plan calculation'])
+
+@st.cache_data
+def build_input_summary(
+    function,
+    fractions,
+    actual_fraction,
+    overlaps,
+    accumulated_dose,
+    minimum_dose,
+    maximum_dose,
+    mean_dose,
+    dose_steps,
+    alpha,
+    beta,
+    slope,
+    intercept
+):
+    """Build a human-readable summary of all inputs used for a calculation."""
+    lines = [
+        "Overlap Adaptive Fractionation — Input Summary",
+        "-" * 48,
+        f"Function: {function}",
+        "",
+        "Treatment Parameters",
+        f"- Total number of fractions: {fractions}",
+        f"- Actual fraction (if applicable): {actual_fraction}",
+        f"- Accumulated physical dose (Gy): {accumulated_dose}",
+        f"- Mean dose per fraction (Gy): {mean_dose}",
+        f"- Minimum dose (Gy): {minimum_dose}",
+        f"- Maximum dose (Gy): {maximum_dose}",
+        f"- Dose steps (Gy): {dose_steps}",
+        "",
+        "Overlap Volumes (cc)",
+        f"- Observed overlaps: {', '.join([str(v) for v in overlaps])}",
+        "",
+        "Model Parameters",
+        f"- Alpha: {alpha}",
+        f"- Beta: {beta}",
+        f"- Slope: {slope}",
+        f"- Intercept: {intercept}",
+    ]
+    return ("\n".join(lines)).encode("utf-8")
+
+
+@st.cache_data
+def build_precompute_zip(csv_bytes, input_summary_bytes):
+    """Bundle precompute outputs into a single zip file."""
+    buffer = io.BytesIO()
+    with zipfile.ZipFile(buffer, mode="w", compression=zipfile.ZIP_DEFLATED) as zf:
+        zf.writestr("precomputed_plans.csv", csv_bytes)
+        zf.writestr("precompute_inputs.txt", input_summary_bytes)
+    return buffer.getvalue()
 
 
 left, right = st.columns(2)  
@@ -74,17 +130,35 @@ if st.button('compute optimal dose', help = 'takes the given inputs from above t
         with st.spinner('computing plans. This might take up to 2-3 minutes'):
             volume_x_dose, volumes_to_check, predicted_policies = af.precompute_plan(fraction = int(actual_fraction), volumes = np.array(overlaps), accumulated_dose = float(accumulated_dose), number_of_fractions = int(fractions), min_dose = float(minimum_dose), max_dose = float(maximum_dose), mean_dose = float(mean_dose), dose_steps = float(dose_steps))
         csv = convert_df(volume_x_dose)
+        input_summary = build_input_summary(
+            function=function,
+            fractions=int(fractions),
+            actual_fraction=int(actual_fraction),
+            overlaps=overlaps,
+            accumulated_dose=float(accumulated_dose),
+            minimum_dose=float(minimum_dose),
+            maximum_dose=float(maximum_dose),
+            mean_dose=float(mean_dose),
+            dose_steps=float(dose_steps),
+            alpha=DEFAULT_ALPHA,
+            beta=DEFAULT_BETA,
+            slope=SLOPE,
+            intercept=INTERCEPT
+        )
+        zip_bytes = build_precompute_zip(csv, input_summary)
         left2, right2 = st.columns(2)  
         with left2:
             st.dataframe(data = volume_x_dose,height = 600, hide_index = True)
             st.download_button(
-            "Download table",
-            csv,
-            "precomputed_plans.csv",
-            "text/csv",
-            key='data')
+            "Download precompute bundle (zip)",
+            zip_bytes,
+            "precompute_bundle.zip",
+            "application/zip",
+            key='precompute_zip')
         with right2:
-            st.pyplot(af.actual_policy_plotter(predicted_policies,volumes_to_check))   
+            distribution = norm(loc = np.array(overlaps).mean(), scale = std_calc(np.array(overlaps), DEFAULT_ALPHA, DEFAULT_BETA))
+            probabilities = distribution.pdf(volumes_to_check)
+            st.pyplot(af.actual_policy_plotter(predicted_policies,volumes_to_check,probabilities))   
     else:
         [physical_doses, accumulated_doses, total_penalty] = af.adaptfx_full(volumes = np.array(overlaps), number_of_fractions = int(fractions), min_dose = float(minimum_dose), max_dose = float(maximum_dose), mean_dose = float(mean_dose), dose_steps = float(dose_steps))
         cols = st.columns(int(fractions))
