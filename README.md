@@ -21,12 +21,39 @@ The adaptive approach improves treatment outcomes by maximizing dose when overla
 ```bash
 git clone https://github.com/YoelPH/Overlap_adaptfx.git
 cd Overlap_adaptfx
+pip install -r requirements.txt
 pip install -e .
 ```
 
 ## Quick Start
 
 Check the `evaluation/Evaluation.ipynb` notebook for a comprehensive example of using the package with clinical data.
+
+## Running the Streamlit App
+
+An interactive web interface is available for computing optimal dose delivery:
+
+### Prerequisites
+Ensure you have installed the package and dependencies:
+```bash
+pip install streamlit
+```
+
+### Launch the App
+From the repository root directory, run:
+
+```bash
+streamlit run app.py
+```
+
+The app will start and typically open in your default browser at `http://localhost:8501`. If it doesn't open automatically, visit this URL manually.
+
+### Features
+The Streamlit interface provides three main functionalities:
+- **Actual Fraction Calculation**: Compute optimal dose for a specific fraction given current overlap
+- **Precompute Plan**: Generate decision rules for all possible overlap scenarios
+- **Full Plan Calculation**: Complete adaptive fractionation plan from start to finish
+
 
 ## Algorithm Details
 
