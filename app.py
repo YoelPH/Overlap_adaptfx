@@ -55,14 +55,14 @@ def build_input_summary(
 ):
     """Build a human-readable summary of all inputs used for a calculation."""
     lines = [
-        "Overlap Adaptive Fractionation — Input Summary",
+        f"Overlap Adaptive Fractionation — Fraction {actual_fraction} Summary",
         "-" * 48,
         f"Function: {function}",
         "",
         "Treatment Parameters",
         f"- Total number of fractions: {fractions}",
-        f"- Actual fraction (if applicable): {actual_fraction}",
-        f"- Accumulated physical dose (Gy): {accumulated_dose}",
+        f"- Current fraction: {actual_fraction}",
+        f"- Previously accumulated physical dose (Gy): {accumulated_dose}",
         f"- Mean dose per fraction (Gy): {mean_dose}",
         f"- Minimum dose (Gy): {minimum_dose}",
         f"- Maximum dose (Gy): {maximum_dose}",
@@ -90,7 +90,7 @@ def build_precompute_zip(csv_bytes, input_summary_bytes):
     buffer = io.BytesIO()
     with zipfile.ZipFile(buffer, mode="w", compression=zipfile.ZIP_DEFLATED) as zf:
         zf.writestr("precomputed_plans.csv", csv_bytes)
-        zf.writestr("precompute_inputs.txt", input_summary_bytes)
+        zf.writestr(f"Fraction_{actual_fraction}_summary.txt", input_summary_bytes)
     return buffer.getvalue()
 
 
