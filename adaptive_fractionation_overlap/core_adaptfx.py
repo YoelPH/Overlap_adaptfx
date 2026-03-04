@@ -329,4 +329,3 @@ def precompute_plan(fraction: int, volumes: np.ndarray, accumulated_dose: float,
             'dose': predicted_policies}
     volume_x_dose = pd.DataFrame(data)
     return volume_x_dose, volumes_to_check, predicted_policies
-    
