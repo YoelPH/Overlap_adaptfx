@@ -27,6 +27,65 @@ from adaptive_fractionation_overlap.constants import (
     DEFAULT_BETA
 )
 
+GOLDEN_FULL_PLAN_CASES = [
+    pytest.param(
+        [9.08, 19.79, 6.02, 9.45, 19.59, 12.62],
+        {
+            "number_of_fractions": 5,
+            "min_dose": 6.0,
+            "max_dose": 10.0,
+            "mean_dose": 6.6,
+            "dose_steps": 0.5,
+        },
+        np.array([6.0, 8.0, 6.5, 6.0, 6.5]),
+        np.array([0.0, 6.0, 14.0, 20.5, 26.5]),
+        -32.6941875,
+        id="notebook-patient-3-33gy",
+    ),
+    pytest.param(
+        [0.0, 0.04, 0.0, 0.03, 0.0, 0.01],
+        {
+            "number_of_fractions": 5,
+            "min_dose": 6.0,
+            "max_dose": 10.0,
+            "mean_dose": 7.0,
+            "dose_steps": 0.5,
+        },
+        np.array([6.0, 10.0, 6.0, 7.0, 6.0]),
+        np.array([0.0, 6.0, 16.0, 22.0, 29.0]),
+        0.0,
+        id="notebook-patient-12-35gy",
+    ),
+    pytest.param(
+        [0.41, 2.37, 0.68, 2.67, 1.62, 1.27],
+        {
+            "number_of_fractions": 5,
+            "min_dose": 6.0,
+            "max_dose": 10.0,
+            "mean_dose": 8.0,
+            "dose_steps": 0.5,
+        },
+        np.array([6.5, 10.0, 6.5, 8.5, 8.5]),
+        np.array([0.0, 6.5, 16.5, 23.0, 31.5]),
+        -22.2808125,
+        id="notebook-patient-8-40gy",
+    ),
+    pytest.param(
+        [0.07, 0.23, 0.0, 0.0, 0.0, 0.04],
+        {
+            "number_of_fractions": 5,
+            "min_dose": 6.0,
+            "max_dose": 11.0,
+            "mean_dose": 9.0,
+            "dose_steps": 0.5,
+        },
+        np.array([7.5, 11.0, 11.0, 9.5, 6.0]),
+        np.array([0.0, 7.5, 18.5, 29.5, 39.0]),
+        -0.5131875,
+        id="notebook-patient-57-45gy",
+    ),
+]
+
 
 class TestAdaptiveFractionationCore:
     """Test the adaptive_fractionation_core function."""
@@ -461,6 +520,72 @@ class TestCoreAdaptfxIntegration:
             # We're lenient here because constraints can override this pattern
             assert correlation <= 0.5, \
                 f"Patient {i}: Doses should not be strongly positively correlated with volumes"
+
+
+@pytest.mark.integration
+class TestCoreAdaptfxGoldenRegression:
+    """Golden regression tests for representative notebook-dataset patient plans."""
+
+    @pytest.mark.parametrize(
+        "volumes, planner_kwargs, expected_physical_doses, expected_accumulated_doses, expected_total_penalty",
+        GOLDEN_FULL_PLAN_CASES,
+    )
+    def test_adaptfx_full_golden_cases(
+        self,
+        volumes,
+        planner_kwargs,
+        expected_physical_doses,
+        expected_accumulated_doses,
+        expected_total_penalty,
+    ):
+        """Pin the full-plan outputs for representative patient inputs."""
+        physical_doses, accumulated_doses, total_penalty = adaptfx_full(
+            volumes=np.array(volumes),
+            **planner_kwargs,
+        )
+
+        np.testing.assert_allclose(physical_doses, expected_physical_doses, atol=1e-12)
+        np.testing.assert_allclose(accumulated_doses, expected_accumulated_doses, atol=1e-12)
+        assert total_penalty == pytest.approx(expected_total_penalty, abs=1e-12)
+
+    def test_adaptive_fractionation_core_fraction_sequence_golden_case(self):
+        """Pin the per-fraction core outputs for notebook dataset patient 8."""
+        volumes = np.array([0.41, 2.37, 0.68, 2.67, 1.62, 1.27])
+        expected_physical_doses = np.array([6.5, 10.0, 6.5, 8.5, 8.5])
+        expected_penalties_added = np.array([1.3775625, 6.256, 1.5519375, 7.340625, 5.7546875])
+        expected_final_penalties = np.array([
+            -22.08644483137297,
+            -20.63852772081227,
+            -15.787182500058243,
+            -21.750556162561374,
+            -5.754687499999999,
+        ])
+
+        accumulated_dose = 0.0
+        actual_physical_doses = []
+        actual_penalties_added = []
+        actual_final_penalties = []
+
+        for fraction in range(1, 6):
+            result = adaptive_fractionation_core(
+                fraction=fraction,
+                volumes=volumes[: fraction + 1],
+                accumulated_dose=accumulated_dose,
+                number_of_fractions=5,
+                min_dose=6.0,
+                max_dose=10.0,
+                mean_dose=8.0,
+                dose_steps=0.5,
+            )
+            physical_dose = result[3]
+            actual_physical_doses.append(physical_dose)
+            actual_penalties_added.append(result[4])
+            actual_final_penalties.append(result[8])
+            accumulated_dose += physical_dose
+
+        np.testing.assert_allclose(actual_physical_doses, expected_physical_doses, atol=1e-12)
+        np.testing.assert_allclose(actual_penalties_added, expected_penalties_added, atol=1e-12)
+        np.testing.assert_allclose(actual_final_penalties, expected_final_penalties, atol=1e-12)
 
 
 # Performance and edge case tests
