@@ -67,14 +67,13 @@ def std_calc(measured_data, alpha, beta):
     """
     n = len(measured_data)
     std_values = np.arange(0.001, 10, 0.001)
-    likelihood_values = np.zeros(len(std_values))
-    for index, value in enumerate(std_values):
-        likelihood_values[index] = (
-            value ** (alpha - 1)
-            / value ** (n - 1)
-            * np.exp(-1 / beta * value)
-            * np.exp(-np.var(measured_data) / (2 * (value**2 / n)))
-        )
+    measured_variance = np.var(measured_data)
+    likelihood_values = (
+        std_values ** (alpha - 1)
+        / std_values ** (n - 1)
+        * np.exp(-1 / beta * std_values)
+        * np.exp(-measured_variance / (2 * (std_values**2 / n)))
+    )
     std = std_values[np.argmax(likelihood_values)]
     return std
 
@@ -114,10 +113,10 @@ def probdist(X,state_space):
         array with probabilities for each sparing factor.
 
     """
-    prob = np.zeros(len(state_space))
     spacing = state_space[1]-state_space[0]
-    for idx, state in enumerate(state_space):
-        prob[idx] = X.cdf(state + spacing/2) - X.cdf(state - spacing/2)
+    upper_bounds = state_space + spacing/2
+    lower_bounds = state_space - spacing/2
+    prob = X.cdf(upper_bounds) - X.cdf(lower_bounds)
     return np.array(prob) #note: this will only add up to roughly 96% instead of 100%
 
 def penalty_calc_single(physical_dose, min_dose, actual_volume, intercept=INTERCEPT, slope=SLOPE):
