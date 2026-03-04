@@ -40,6 +40,6 @@ jobs:
           python -m pip install --upgrade pip
           python -m pip install -e .[test]
 
-      - name: Run pytest
+      - name: Run pytest with coverage
         run: |
-          python -m pytest tests/
+          python -m pytest tests/ --cov=adaptive_fractionation_overlap --cov-report=term-missing
