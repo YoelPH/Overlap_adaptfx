@@ -5,6 +5,11 @@ This file defines test fixtures that can be used across all test files.
 Fixtures are reusable test data and setup code.
 """
 
+import os
+
+os.environ.setdefault("MPLBACKEND", "Agg")
+
+import matplotlib
 import pytest
 import numpy as np
 from adaptive_fractionation_overlap.constants import (
@@ -18,6 +23,8 @@ from adaptive_fractionation_overlap.constants import (
     DEFAULT_ALPHA,
     DEFAULT_BETA
 )
+
+matplotlib.use("Agg")
 
 
 @pytest.fixture

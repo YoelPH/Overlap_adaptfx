@@ -13,6 +13,7 @@ correctly with realistic patient data as shown in evaluation.ipynb.
 import pytest
 import numpy as np
 from adaptive_fractionation_overlap.core_adaptfx import (
+    policy_calc,
     adaptive_fractionation_core,
     adaptfx_full,
     precompute_plan
@@ -26,6 +27,65 @@ from adaptive_fractionation_overlap.constants import (
     DEFAULT_ALPHA,
     DEFAULT_BETA
 )
+
+GOLDEN_FULL_PLAN_CASES = [
+    pytest.param(
+        [9.08, 19.79, 6.02, 9.45, 19.59, 12.62],
+        {
+            "number_of_fractions": 5,
+            "min_dose": 6.0,
+            "max_dose": 10.0,
+            "mean_dose": 6.6,
+            "dose_steps": 0.5,
+        },
+        np.array([6.0, 8.0, 6.5, 6.0, 6.5]),
+        np.array([0.0, 6.0, 14.0, 20.5, 26.5]),
+        -32.6941875,
+        id="notebook-patient-3-33gy",
+    ),
+    pytest.param(
+        [0.0, 0.04, 0.0, 0.03, 0.0, 0.01],
+        {
+            "number_of_fractions": 5,
+            "min_dose": 6.0,
+            "max_dose": 10.0,
+            "mean_dose": 7.0,
+            "dose_steps": 0.5,
+        },
+        np.array([6.0, 10.0, 6.0, 7.0, 6.0]),
+        np.array([0.0, 6.0, 16.0, 22.0, 29.0]),
+        0.0,
+        id="notebook-patient-12-35gy",
+    ),
+    pytest.param(
+        [0.41, 2.37, 0.68, 2.67, 1.62, 1.27],
+        {
+            "number_of_fractions": 5,
+            "min_dose": 6.0,
+            "max_dose": 10.0,
+            "mean_dose": 8.0,
+            "dose_steps": 0.5,
+        },
+        np.array([6.5, 10.0, 6.5, 8.5, 8.5]),
+        np.array([0.0, 6.5, 16.5, 23.0, 31.5]),
+        -22.2808125,
+        id="notebook-patient-8-40gy",
+    ),
+    pytest.param(
+        [0.07, 0.23, 0.0, 0.0, 0.0, 0.04],
+        {
+            "number_of_fractions": 5,
+            "min_dose": 6.0,
+            "max_dose": 11.0,
+            "mean_dose": 9.0,
+            "dose_steps": 0.5,
+        },
+        np.array([7.5, 11.0, 11.0, 9.5, 6.0]),
+        np.array([0.0, 7.5, 18.5, 29.5, 39.0]),
+        -0.5131875,
+        id="notebook-patient-57-45gy",
+    ),
+]
 
 
 class TestAdaptiveFractionationCore:
@@ -319,7 +379,7 @@ class TestPrecomputePlan:
     """Test the precompute_plan function."""
     
     def test_precompute_plan_basic(self, sample_volumes):
-        """Test basic functionality of precompute_plan."""
+        """Golden regression test for precompute_plan using the sample patient."""
         volumes = sample_volumes[:3]  # First 3 volumes
         
         result = precompute_plan(
@@ -343,6 +403,47 @@ class TestPrecomputePlan:
         assert isinstance(volume_list, (list, np.ndarray)), "Volume list should be list or array"
         assert isinstance(dose_list, (list, np.ndarray)), "Dose list should be list or array"
         assert len(volume_list) == len(dose_list), "Volume and dose lists should have same length"
+
+        volume_array = np.asarray(volume_list, dtype=float)
+        dose_array = np.asarray(dose_list, dtype=float)
+
+        # Pin current decision frontier shape and values for this known patient case.
+        assert len(volume_array) == 152, "Expected fixed volume frontier length for this scenario"
+        assert len(dose_array) == 152, "Expected fixed dose frontier length for this scenario"
+        np.testing.assert_allclose(np.diff(volume_array), 0.1, atol=1e-12)
+        assert volume_array[0] == pytest.approx(0.0, abs=1e-12)
+        assert volume_array[-1] == pytest.approx(15.1, abs=1e-12)
+        assert dose_array[0] == pytest.approx(10.0, abs=1e-12)
+        assert dose_array[-1] == pytest.approx(6.0, abs=1e-12)
+        assert np.all(np.diff(dose_array) <= 1e-12), "Dose decisions should be monotone non-increasing"
+        np.testing.assert_array_equal(
+            np.unique(dose_array),
+            np.array([6.0, 6.5, 7.0, 7.5, 8.0, 8.5, 9.0, 9.5, 10.0]),
+        )
+        np.testing.assert_allclose(df["volume"].to_numpy(), volume_array, atol=1e-12)
+        np.testing.assert_allclose(df["dose"].to_numpy(), dose_array, atol=1e-12)
+
+        transition_indices = np.where(np.diff(dose_array) != 0)[0]
+        transitions = np.column_stack(
+            (
+                volume_array[transition_indices + 1],
+                dose_array[transition_indices],
+                dose_array[transition_indices + 1],
+            )
+        )
+        expected_transitions = np.array(
+            [
+                [0.7, 10.0, 9.5],
+                [0.9, 9.5, 9.0],
+                [1.1, 9.0, 8.5],
+                [1.3, 8.5, 8.0],
+                [1.8, 8.0, 7.5],
+                [2.5, 7.5, 7.0],
+                [4.4, 7.0, 6.5],
+                [15.1, 6.5, 6.0],
+            ]
+        )
+        np.testing.assert_allclose(transitions, expected_transitions, atol=1e-12)
     
     def test_precompute_plan_different_fractions(self, sample_volumes):
         """Test precompute_plan for different fractions."""
@@ -461,6 +562,122 @@ class TestCoreAdaptfxIntegration:
             # We're lenient here because constraints can override this pattern
             assert correlation <= 0.5, \
                 f"Patient {i}: Doses should not be strongly positively correlated with volumes"
+
+
+@pytest.mark.integration
+class TestCoreAdaptfxGoldenRegression:
+    """Golden regression tests for representative notebook-dataset patient plans."""
+
+    @pytest.mark.parametrize(
+        "volumes, planner_kwargs, expected_physical_doses, expected_accumulated_doses, expected_total_penalty",
+        GOLDEN_FULL_PLAN_CASES,
+    )
+    def test_adaptfx_full_golden_cases(
+        self,
+        volumes,
+        planner_kwargs,
+        expected_physical_doses,
+        expected_accumulated_doses,
+        expected_total_penalty,
+    ):
+        """Pin the full-plan outputs for representative patient inputs."""
+        physical_doses, accumulated_doses, total_penalty = adaptfx_full(
+            volumes=np.array(volumes),
+            **planner_kwargs,
+        )
+
+        np.testing.assert_allclose(physical_doses, expected_physical_doses, atol=1e-12)
+        np.testing.assert_allclose(accumulated_doses, expected_accumulated_doses, atol=1e-12)
+        assert total_penalty == pytest.approx(expected_total_penalty, abs=1e-12)
+
+    def test_adaptive_fractionation_core_fraction_sequence_golden_case(self):
+        """Pin the per-fraction core outputs for notebook dataset patient 8."""
+        volumes = np.array([0.41, 2.37, 0.68, 2.67, 1.62, 1.27])
+        expected_physical_doses = np.array([6.5, 10.0, 6.5, 8.5, 8.5])
+        expected_penalties_added = np.array([1.3775625, 6.256, 1.5519375, 7.340625, 5.7546875])
+        expected_final_penalties = np.array([
+            -22.08644483137297,
+            -20.63852772081227,
+            -15.787182500058243,
+            -21.750556162561374,
+            -5.754687499999999,
+        ])
+
+        accumulated_dose = 0.0
+        actual_physical_doses = []
+        actual_penalties_added = []
+        actual_final_penalties = []
+
+        for fraction in range(1, 6):
+            result = adaptive_fractionation_core(
+                fraction=fraction,
+                volumes=volumes[: fraction + 1],
+                accumulated_dose=accumulated_dose,
+                number_of_fractions=5,
+                min_dose=6.0,
+                max_dose=10.0,
+                mean_dose=8.0,
+                dose_steps=0.5,
+            )
+            physical_dose = result[3]
+            actual_physical_doses.append(physical_dose)
+            actual_penalties_added.append(result[4])
+            actual_final_penalties.append(result[8])
+            accumulated_dose += physical_dose
+
+        np.testing.assert_allclose(actual_physical_doses, expected_physical_doses, atol=1e-12)
+        np.testing.assert_allclose(actual_penalties_added, expected_penalties_added, atol=1e-12)
+        np.testing.assert_allclose(actual_final_penalties, expected_final_penalties, atol=1e-12)
+
+    def test_policy_calc_golden_case(self):
+        """Pin policy_calc outputs for a notebook-style fixed distribution case."""
+        policies, policies_overlap, volume_space, values, dose_space, probabilities = policy_calc(
+            fixed_mean_volume=3.0,
+            fixed_std=1.0,
+            number_of_fractions=5,
+            min_dose=6.0,
+            max_dose=10.0,
+            mean_dose=8.0,
+            dose_steps=0.5,
+        )
+
+        assert policies.shape == (4, 70, 200)
+        assert values.shape == (4, 70, 200)
+        assert policies_overlap.shape == (200,)
+        assert volume_space.shape == (200,)
+        assert dose_space.shape == (70,)
+        assert probabilities.shape == (200,)
+        np.testing.assert_allclose(
+            dose_space,
+            np.concatenate((np.arange(6.0, 40.0, 0.5), [40.0, 40.05])),
+            atol=1e-12,
+        )
+        assert probabilities.sum() == pytest.approx(0.9981021002554581, abs=1e-12)
+        np.testing.assert_array_equal(
+            np.unique(policies_overlap),
+            np.array([6.5, 7.0, 7.5, 8.0, 8.5, 9.0, 9.5, 10.0]),
+        )
+
+        transition_indices = np.where(np.diff(policies_overlap) != 0)[0]
+        transitions = np.column_stack(
+            (
+                volume_space[transition_indices + 1],
+                policies_overlap[transition_indices],
+                policies_overlap[transition_indices + 1],
+            )
+        )
+        expected_transitions = np.array(
+            [
+                [1.6800515275162606, 10.0, 9.5],
+                [1.9285124164543763, 9.5, 9.0],
+                [2.239088527627021, 9.0, 8.5],
+                [2.6117798610341945, 8.5, 8.0],
+                [3.13975925002769, 8.0, 7.5],
+                [3.8540843057247725, 7.5, 7.0],
+                [4.847927861477235, 7.0, 6.5],
+            ]
+        )
+        np.testing.assert_allclose(transitions, expected_transitions, atol=1e-12)
 
 
 # Performance and edge case tests
