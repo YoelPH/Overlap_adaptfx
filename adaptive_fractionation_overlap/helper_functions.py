@@ -77,6 +77,44 @@ def std_calc(measured_data, alpha, beta):
     std = std_values[np.argmax(likelihood_values)]
     return std
 
+def get_analytic_std(measured_data, alpha, beta):
+    measured_data = np.asarray(measured_data)
+    n = len(measured_data)
+    measured_variance = np.var(measured_data)
+
+    # Special case: zero variance
+    if measured_variance == 0:
+        if alpha > n:
+            return beta * (alpha - n)
+        return 0.0
+
+    # derivative of log likelihood:
+    # (alpha - n) / std - 1 / beta + n * variance / std^3 = 0
+    #
+    # multiply by std^3:
+    # -std^3 / beta + (alpha - n) std^2 + n * variance = 0
+    roots = np.roots([
+        -1 / beta,
+        alpha - n,
+        0.0,
+        n * measured_variance,
+    ])
+
+    real_roots = roots[np.isclose(roots.imag, 0)].real
+    positive_roots = real_roots[real_roots > 0]
+
+    if len(positive_roots) == 0:
+        return 0.0
+
+    def log_likelihood(std):
+        return (
+            (alpha - n) * np.log(std)
+            - std / beta
+            - measured_variance / (2 * (std**2 / n))
+        )
+
+    return positive_roots[np.argmax([log_likelihood(r) for r in positive_roots])]
+
 
 
 def get_state_space(distribution):
