@@ -127,10 +127,38 @@ if st.button('compute optimal dose', help = 'takes the given inputs from above t
             st.pyplot(af.actual_policy_plotter(policies_overlap,volume_space,probabilities))
         with st.expander('see Analytics'):
             st.header('Analytics')
-            if int(actual_fraction) != int(fractions):
-                figure = af.analytic_plotting(int(actual_fraction),int(fractions),values, volume_space, dose_space)    
+
+            degenerate_std_case = (
+                len(volume_space) < 2
+                or len(probabilities) < 2
+                or values.shape[0] != int(fractions) - int(actual_fraction)
+            )
+
+            if degenerate_std_case:
+                st.info(
+                    "Analytic value-function plots are not shown because the estimated "
+                    "overlap standard deviation is zero. In this case, the model assumes "
+                    "no detectable overlap variation and falls back to the remaining "
+                    "average dose."
+                )
+            elif int(actual_fraction) != int(fractions):
+                figure = af.analytic_plotting(
+                    int(actual_fraction),
+                    int(fractions),
+                    values,
+                    volume_space,
+                    dose_space
+                )
                 st.pyplot(figure)
-                st.write('The figures above show the value function for each future fraction. These functions help to identify whether a potential mistake has been made in the calculation.')
+                st.write(
+                    "The figures above show the value function for each future fraction. "
+                    "These functions help to identify whether a potential mistake has "
+                    "been made in the calculation."
+                )
+        
+        
+        
+    
     elif function == 'precompute plan':
         with st.spinner('computing plans. This might take up to 2-3 minutes'):
             volume_x_dose, volumes_to_check, predicted_policies = af.precompute_plan(fraction = int(actual_fraction), volumes = np.array(overlaps), accumulated_dose = float(accumulated_dose), number_of_fractions = int(fractions), min_dose = float(minimum_dose), max_dose = float(maximum_dose), mean_dose = float(mean_dose), dose_steps = float(dose_steps))

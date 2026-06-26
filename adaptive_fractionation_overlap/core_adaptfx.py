@@ -160,6 +160,37 @@ def adaptive_fractionation_core(fraction: int, volumes: np.ndarray, accumulated_
         accumulated_dose = 0
     minimum_future = accumulated_dose + min_dose 
     std = get_analytic_std(volumes, alpha, beta)
+    if not np.isfinite(std) or std <= 1e-8:
+        fractions_left = number_of_fractions - fraction + 1
+        remaining_average_dose = (goal - accumulated_dose) / fractions_left
+
+        delivered_doses = np.arange(min_dose, max_dose + 0.01, dose_steps)
+        actual_policy = delivered_doses[
+            np.abs(delivered_doses - remaining_average_dose).argmin()
+        ]
+
+        physical_dose = np.round(actual_policy, 2)
+        penalty_added = penalty_calc_single(physical_dose, min_dose, actual_volume)
+        final_penalty = -penalty_added
+
+        volume_space = np.array([max(volumes.mean(), 0.0)])
+        probabilities = np.array([1.0])
+        dose_space = np.array([accumulated_dose])
+        policies_overlap = np.array([physical_dose])
+        values = np.zeros((1, 1, 1))
+        policies = np.ones((1, 1, 1)) * physical_dose
+
+        return [
+            policies,
+            policies_overlap,
+            volume_space,
+            physical_dose,
+            penalty_added,
+            values,
+            dose_space,
+            probabilities,
+            final_penalty,
+        ]
     distribution = norm(loc = volumes.mean(), scale = std)
     volume_space = get_state_space(distribution)
     probabilities = probdist(distribution,volume_space) #produce probabilities of the respective volumes
@@ -315,6 +346,17 @@ def precompute_plan(fraction: int, volumes: np.ndarray, accumulated_dose: float,
     distribution = norm(loc = volumes.mean(), scale = std)
     volume_space = get_state_space(distribution)
     distribution_max = 6.5 if volume_space.max() < 6.5 else volume_space.max()
+    
+    std = get_analytic_std(volumes, alpha, beta)
+
+    if not np.isfinite(std) or std <= 1e-8:
+        distribution_max = 6.5
+    else:
+        distribution = norm(loc = volumes.mean(), scale = std)
+        volume_space = get_state_space(distribution)
+        distribution_max = 6.5 if volume_space.max() < 6.5 else volume_space.max()
+    
+    
     volumes_to_check = np.arange(0,distribution_max,0.1)
     predicted_policies = np.zeros(len(volumes_to_check))
     max_overlap_volume = 150.0  # choose cutoff in cc
