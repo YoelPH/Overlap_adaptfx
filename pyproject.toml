@@ -3,7 +3,30 @@ requires = ["setuptools>=45", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
+name = "adaptive-fractionation-overlap"
+version = "0.1.0"
+description = "Adaptive fractionation for PTV-OAR overlap scenarios"
+readme = "README.md"
 requires-python = ">=3.10"
+authors = [
+    { name = "Yoel Pérez Haas", email = "yoel.perezhaas@usz.ch" }
+]
+license = { text = "MIT" }
+keywords = [
+    "python",
+    "adaptive fractionation",
+    "radiotherapy",
+    "medical",
+]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Healthcare Industry",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Operating System :: OS Independent",
+]
 
 dependencies = [
     "numpy>=1.24",
