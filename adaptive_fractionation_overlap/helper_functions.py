@@ -293,7 +293,7 @@ def analytic_plotting(fraction: int, number_of_fractions: int, values: np.ndarra
     values[values < -10000000000] = 10000000000
     min_Value = np.min(values)
     values[values == 10000000000] = 1.1*min_Value
-    colormap = plt.cm.get_cmap('jet')
+    colormap = plt.get_cmap("jet")
     number_of_plots = number_of_fractions - fraction
     fig, axs = plt.subplots(1,number_of_plots, figsize = (number_of_plots*10,10))
     if number_of_plots > 1:
