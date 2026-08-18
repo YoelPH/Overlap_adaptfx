@@ -3,33 +3,30 @@ requires = ["setuptools>=45", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "adaptive-fractionation-overlap"
-version = "0.1.0"
-description = "Adaptive fractionation for PTV-OAR overlap scenarios"
-readme = "README.md"
-authors = [{name = "Yoel Pérez Haas", email = "yoel.perezhaas@usz.ch"}]
-license = {text = "MIT"}
-keywords = ["python", "adaptive fractionation", "radiotherapy", "medical"]
-classifiers = [
-    "Development Status :: 3 - Alpha",
-    "Intended Audience :: Healthcare Industry",
-    "Programming Language :: Python :: 3",
-    "Programming Language :: Python :: 3.8",
-    "Programming Language :: Python :: 3.9",
-    "Programming Language :: Python :: 3.10",
-    "Programming Language :: Python :: 3.11",
-    "Operating System :: OS Independent",
-]
+requires-python = ">=3.10"
+
 dependencies = [
-    "numpy>=1.24.0",
-    "scipy>=1.10.0",
-    "matplotlib>=3.7.0",
-    "pandas>=2.0.0"
+    "numpy>=1.24",
+    "scipy>=1.10",
+    "matplotlib>=3.7",
+    "pandas>=2.0",
 ]
 
 [project.optional-dependencies]
-test = ["pytest>=7.0", "pytest-cov>=4.0"]
-dev = ["pytest>=7.0", "pytest-cov>=4.0", "black", "flake8"]
+app = [
+    "streamlit",
+]
+test = [
+    "pytest>=7",
+    "pytest-cov>=4",
+]
+dev = [
+    "pytest>=7",
+    "pytest-cov>=4",
+    "black",
+    "flake8",
+    "streamlit",
+]
 
 [tool.setuptools.packages.find]
 where = ["."]

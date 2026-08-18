@@ -17,12 +17,17 @@ The adaptive approach improves treatment outcomes by maximizing dose when overla
 
 ## Installation
 
-### From Source (Development)
+### From Source
+
 ```bash
 git clone https://github.com/YoelPH/Overlap_adaptfx.git
 cd Overlap_adaptfx
-pip install -r requirements.txt
-pip install -e .
+
+python3 -m venv .venv
+source .venv/bin/activate
+
+python -m pip install --upgrade pip
+python -m pip install -e ".[test]"
 ```
 
 ## Quick Start
@@ -31,7 +36,11 @@ Check the `evaluation/Evaluation.ipynb` notebook for a comprehensive example of 
 
 ## Running the Streamlit App
 
-An interactive web interface is available for computing optimal dose delivery:
+Install the application dependencies:
+
+```bash
+python -m pip install -e ".[app]"
+```
 
 ### Prerequisites
 Ensure you have installed the package and dependencies:
@@ -95,6 +104,13 @@ evaluation/
 ```
 
 ## Testing
+
+Install the testing dependencies and run the complete suite:
+
+```bash
+python -m pip install -e ".[test]"
+python -m pytest
+```
 
 The package includes comprehensive test coverage:
 
